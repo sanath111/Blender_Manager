@@ -15,7 +15,6 @@ import setproctitle
 import subprocess
 import shlex
 from collections import OrderedDict
-# import pyperclip
 import time
 import threading
 import traceback
@@ -24,7 +23,7 @@ import json
 from PIL import Image
 from multiprocessing import Pool
 from bs4 import BeautifulSoup
-import urllib2
+import urllib
 import re
 
 from PyQt5.QtWidgets import QApplication, QFileSystemModel, QListWidgetItem
@@ -59,7 +58,7 @@ class blenderLauncherWidget():
         global listIcon
         global iconsIcon
 
-        self.threadpool = QtCore.QThreadPool()
+        # self.threadpool = QtCore.QThreadPool()
 
         self.main_ui = uic.loadUi(main_ui_file)
         self.main_ui.setWindowTitle("BLENDER LAUNCHER")
@@ -135,9 +134,9 @@ class blenderLauncherWidget():
 
         build_str = "https://"+site+ver+"/"
 
-        getLinkWorker = Worker(self.getLinks, build_str, type)
-        getLinkWorker.signals.finished.connect(lambda ui=ui, type=type : self.loadLinks(ui,type))
-        self.threadpool.start(getLinkWorker)
+        lT = getlinkThread(build_str,type,app)
+        lT.finished.connect(lambda ui=ui, type=type: self.loadLinks(ui, type))
+        lT.start()
 
     def loadLinks(self,ui,type):
         labels = [""]+[str(key) for key in versionLinks[type]]
@@ -145,17 +144,6 @@ class blenderLauncherWidget():
         # debug.info(labels)
         ui.clear()
         ui.addItems(labels)
-
-    def getLinks(self, build_str, type, progress_callback):
-        htmlPage = urllib2.urlopen(build_str)
-        soup = BeautifulSoup(htmlPage, 'html.parser')
-
-        for link in soup.findAll('a', attrs={'href': re.compile("(?=.*linux)(?=.*64)(?=.*.tar)")}):
-            downloadLabel = str(link.get('href'))
-            downloadLabel = str(downloadLabel.replace(build_str,""))
-            downloadLink = build_str+downloadLabel
-            if downloadLabel.endswith(".tar.xz") or downloadLabel.endswith(".tar.bz2"):
-                versionLinks[type][downloadLabel] = downloadLink
 
     def addItemToList(self, combo_ui, list_ui, type):
         currText = str(combo_ui.currentText()).strip()
@@ -225,43 +213,23 @@ class blenderLauncherWidget():
             list_ui.addItem(item)
             list_ui.setItemWidget(item, itemWidget)
 
-    def updatePrgress(self, prctg,bar):
+    def updatePrgress(self, prctg, bar):
         bar.setValue(int(prctg))
 
     def downloadVersion(self,list_ui,type,link,name,dbutt,bar,rbutt):
         dbutt.hide()
         bar.show()
         rbutt.setEnabled(False)
-        downloadWorker = Worker(self.download,link,name)
-        downloadWorker.signals.finished.connect(lambda list_ui=list_ui, type=type : self.initList(list_ui,type))
-        downloadWorker.signals.progress.connect(lambda x, bar=bar : self.updatePrgress(x,bar))
-        self.threadpool.start(downloadWorker)
 
-    def download(self,link,name,progress_callback):
-        downCmd = "aria2c --summary-interval 1 --download-result=hide -c -s 10 -x 10 -d " + assDir+ " " + link
-        debug.info(downCmd)
-        # subprocess.call(shlex.split(downCmd))
-        p = subprocess.Popen(shlex.split(downCmd), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1,universal_newlines=True)
+        dT = downloadThread(link, name, app)
+        dT.finished.connect(lambda list_ui=list_ui, type=type : self.initList(list_ui,type))
+        dT.progress.connect(lambda x, bar=bar : self.updatePrgress(x,bar))
+        dT.start()
 
-        for line in iter(p.stdout.readline, b''):
-            if "%" in line:
-                synData = (tuple(filter(None, line.strip().split('('))))
-                if synData:
-                    prctg = synData[1].split("%")[0].strip()
-                    progress_callback.emit(int(prctg))
-
-        untarCmd = "tar -xvf " + assDir + name + " -C " + assDir
-        debug.info(untarCmd)
-        subprocess.Popen(shlex.split(untarCmd))
 
     def launchVersion(self,path):
-        launchWorker = Worker(self.launch,path)
-        self.threadpool.start(launchWorker)
-
-    def launch(self,path,progress_callback):
-        openCmd = path+"/blender"
-        debug.info(openCmd)
-        subprocess.Popen(shlex.split(openCmd))
+        lT = launchThread(path, app)
+        lT.start()
 
 
 class QListWidgetItemSort(QtWidgets.QListWidgetItem):
@@ -272,34 +240,115 @@ class QListWidgetItemSort(QtWidgets.QListWidgetItem):
         return self.data(QtCore.Qt.UserRole) > other.data(QtCore.Qt.UserRole)
 
 
-class WorkerSignals(QtCore.QObject):
+class downloadThread(QThread):
     finished = pyqtSignal()
-    error = pyqtSignal(tuple)
-    result = pyqtSignal(object)
     progress = pyqtSignal(int)
 
+    def __init__(self,link,name,parent):
+        super(downloadThread, self).__init__(parent)
+        self.link = link
+        self.name = name
 
-class Worker(QtCore.QRunnable):
-    def __init__(self, fn, *args, **kwargs):
-        super(Worker, self).__init__()
-        self.fn = fn
-        self.args = args
-        self.kwargs = kwargs
-        self.signals = WorkerSignals()
-        self.kwargs['progress_callback'] = self.signals.progress
+    def run(self):
+        downCmd = "aria2c --summary-interval 1 --download-result=hide -c -s 10 -x 10 -d " + assDir + " " + self.link
+        debug.info(downCmd)
+        # subprocess.call(shlex.split(downCmd))
+        try:
+            p = subprocess.Popen(shlex.split(downCmd), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1,
+                                 universal_newlines=True)
 
-    @pyqtSlot()
+            for line in iter(p.stdout.readline, b''):
+                if "Download complete" in line:
+                    untarCmd = "tar -xvf " + assDir + self.name + " -C " + assDir
+                    debug.info(untarCmd)
+                    try:
+                        subprocess.call(shlex.split(untarCmd))
+                        self.finished.emit()
+                        return
+                    except:
+                        debug.info(str(sys.exc_info()))
+                    return
+                elif "%" in line:
+                    synData = (tuple(filter(None, line.strip().split('('))))
+                    if synData:
+                        prctg = synData[1].split("%")[0].strip()
+                        self.progress.emit(int(prctg))
+        except:
+            debug.info(str(sys.exc_info()))
+            return
+
+
+class launchThread(QThread):
+    finished = pyqtSignal()
+
+    def __init__(self,path,parent):
+        super(launchThread, self).__init__(parent)
+        self.path = path
+
+    def run(self):
+        openCmd = self.path + "/blender"
+        debug.info(openCmd)
+        try:
+            subprocess.Popen(shlex.split(openCmd))
+            self.finished.emit()
+            return
+        except:
+            debug.info(str(sys.exc_info()))
+
+
+class getlinkThread(QThread):
+    finished = pyqtSignal()
+
+    def __init__(self,build_str,type,parent):
+        super(getlinkThread, self).__init__(parent)
+        self.build_str = build_str
+        self.type = type
+
     def run(self):
         try:
-            result = self.fn(*self.args, **self.kwargs)
+            htmlPage = urllib.request.urlopen(self.build_str)
+            soup = BeautifulSoup(htmlPage, 'html.parser')
+
+            for link in soup.findAll('a', attrs={'href': re.compile("(?=.*linux)(?=.*64)(?=.*.tar)")}):
+                downloadLabel = str(link.get('href'))
+                downloadLabel = str(downloadLabel.replace(self.build_str, ""))
+                downloadLink = self.build_str + downloadLabel
+                if downloadLabel.endswith(".tar.xz") or downloadLabel.endswith(".tar.bz2"):
+                    versionLinks[self.type][downloadLabel] = downloadLink
+            self.finished.emit()
+            return
         except:
-            traceback.print_exc()
-            exctype, value = sys.exc_info()[:2]
-            self.signals.error.emit((exctype, value, traceback.format_exc()))
-        else:
-            self.signals.result.emit(result)
-        finally:
-            self.signals.finished.emit()
+            debug.info(str(sys.exc_info()))
+
+
+# class WorkerSignals(QtCore.QObject):
+#     finished = pyqtSignal()
+#     error = pyqtSignal(tuple)
+#     result = pyqtSignal(object)
+#     progress = pyqtSignal(int)
+#
+#
+# class Worker(QtCore.QRunnable):
+#     def __init__(self, fn, *args, **kwargs):
+#         super(Worker, self).__init__()
+#         self.fn = fn
+#         self.args = args
+#         self.kwargs = kwargs
+#         self.signals = WorkerSignals()
+#         self.kwargs['progress_callback'] = self.signals.progress
+#
+#     @pyqtSlot()
+#     def run(self):
+#         try:
+#             result = self.fn(*self.args, **self.kwargs)
+#         except:
+#             traceback.print_exc()
+#             exctype, value = sys.exc_info()[:2]
+#             self.signals.error.emit((exctype, value, traceback.format_exc()))
+#         else:
+#             self.signals.result.emit(result)
+#         finally:
+#             self.signals.finished.emit()
 
 
 if __name__ == '__main__':

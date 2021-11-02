@@ -22,4 +22,4 @@ fi
 #echo "DIR is '$DIR'"
 echo "Loading..."
 cd "$DIR" || return
-/usr/bin/python2 blender_manager.py "$@"
+/usr/bin/python3 blender_manager.py "$@"
