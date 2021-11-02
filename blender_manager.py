@@ -61,7 +61,7 @@ class blenderLauncherWidget():
         # self.threadpool = QtCore.QThreadPool()
 
         self.main_ui = uic.loadUi(main_ui_file)
-        self.main_ui.setWindowTitle("BLENDER LAUNCHER")
+        self.main_ui.setWindowTitle("BLENDER MANAGER")
 
         sS = open(os.path.join(projDir, "dark.qss"), "r")
         self.main_ui.setStyleSheet(sS.read())
@@ -321,38 +321,8 @@ class getlinkThread(QThread):
             debug.info(str(sys.exc_info()))
 
 
-# class WorkerSignals(QtCore.QObject):
-#     finished = pyqtSignal()
-#     error = pyqtSignal(tuple)
-#     result = pyqtSignal(object)
-#     progress = pyqtSignal(int)
-#
-#
-# class Worker(QtCore.QRunnable):
-#     def __init__(self, fn, *args, **kwargs):
-#         super(Worker, self).__init__()
-#         self.fn = fn
-#         self.args = args
-#         self.kwargs = kwargs
-#         self.signals = WorkerSignals()
-#         self.kwargs['progress_callback'] = self.signals.progress
-#
-#     @pyqtSlot()
-#     def run(self):
-#         try:
-#             result = self.fn(*self.args, **self.kwargs)
-#         except:
-#             traceback.print_exc()
-#             exctype, value = sys.exc_info()[:2]
-#             self.signals.error.emit((exctype, value, traceback.format_exc()))
-#         else:
-#             self.signals.result.emit(result)
-#         finally:
-#             self.signals.finished.emit()
-
-
 if __name__ == '__main__':
-    setproctitle.setproctitle("BLENDER_LAUNCHER")
+    setproctitle.setproctitle("BLENDER_MANAGER")
     app = QtWidgets.QApplication(sys.argv)
     window = blenderLauncherWidget()
     sys.exit(app.exec_())
