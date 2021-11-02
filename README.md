@@ -3,9 +3,9 @@ Blender Download and Launcher Tool
 ​
 #### Dependencies
 
-* `python3`
-* `PyQt5`
-* `aria2`
+* [Python3](https://www.python.org/)
+* [PyQt5](https://pypi.org/project/PyQt5/)
+* [aria2](https://aria2.github.io/)
 
 #### Instructions
 
