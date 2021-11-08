@@ -51,6 +51,8 @@ confFile = homeDir+os.sep+".config"+os.sep+"blender_launcher.json"
 addedLinks = {'lts':{},'stable':{},'daily':{}}
 versionLinks = {'lts':{},'stable':{},'daily':{}}
 
+ltsVers = ["Blender2.93","Blender2.83"]
+stableVers = ["Blender2.79","Blender2.80","Blender2.81","Blender2.82","Blender2.90","Blender2.91","Blender2.92"]
 
 
 class blenderLauncherWidget():
@@ -92,15 +94,10 @@ class blenderLauncherWidget():
         self.main_ui.move(qtRectangle.topLeft())
 
     def initLoad(self):
-        self.loadVersions(self.main_ui.comboBox_LTS,"download.blender.org/release/","Blender2.93","lts")
-        self.loadVersions(self.main_ui.comboBox_LTS,"download.blender.org/release/","Blender2.83","lts")
-        self.loadVersions(self.main_ui.comboBox_Stable,"download.blender.org/release/","Blender2.79","stable")
-        self.loadVersions(self.main_ui.comboBox_Stable,"download.blender.org/release/","Blender2.80","stable")
-        self.loadVersions(self.main_ui.comboBox_Stable,"download.blender.org/release/","Blender2.81","stable")
-        self.loadVersions(self.main_ui.comboBox_Stable,"download.blender.org/release/","Blender2.82","stable")
-        self.loadVersions(self.main_ui.comboBox_Stable,"download.blender.org/release/","Blender2.90","stable")
-        self.loadVersions(self.main_ui.comboBox_Stable,"download.blender.org/release/","Blender2.91","stable")
-        self.loadVersions(self.main_ui.comboBox_Stable,"download.blender.org/release/","Blender2.92","stable")
+        for ver in ltsVers:
+            self.loadVersions(self.main_ui.comboBox_LTS,"download.blender.org/release/",ver,"lts")
+        for ver in stableVers:
+            self.loadVersions(self.main_ui.comboBox_Stable,"download.blender.org/release/",ver,"stable")
         self.loadVersions(self.main_ui.comboBox_Daily,"builder.blender.org/download/","daily","daily")
 
         global confFile
@@ -156,7 +153,7 @@ class blenderLauncherWidget():
             if currText in [key for key in addedLinks[type]]:
                 pass
             else:
-                addedLinks[type][currText] = str(versionLinks[type][currText])
+                addedLinks[type][currText] = versionLinks[type][currText]
                 with open(confFile, 'w') as conf_file:
                     json.dump(addedLinks, conf_file, sort_keys=True, indent=4)
 
@@ -164,15 +161,21 @@ class blenderLauncherWidget():
             combo_ui.setCurrentIndex(0)
 
     def rmItemFromList(self, list_ui, label, type):
-        addedLinks[type].pop(label)
+        # addedLinks[type].pop(label)
+        del addedLinks[type][label]
         with open(confFile, 'w') as conf_file:
             json.dump(addedLinks, conf_file, sort_keys=True, indent=4)
         self.initList(list_ui,type)
 
     def loadItems(self, list_ui, label, type):
         if label:
-            new_label = '.'.join(label.split('.')[:-2])
-            labelDir = assDir+new_label
+            name = ""
+            link = ""
+            # debug.info(addedLinks[type][label])
+            for key,value in addedLinks[type][label].items():
+                name = key
+                link = value
+            labelDir = assDir+'.'.join(name.split('.')[:-2])
 
             downloadButt = QtWidgets.QPushButton()
             progBar = QtWidgets.QProgressBar()
@@ -193,8 +196,8 @@ class blenderLauncherWidget():
                 downloadButt.clicked.connect(lambda x, path=labelDir: self.launchVersion(path))
             else:
                 downloadButt.setText("Download")
-                downloadButt.clicked.connect(lambda x, list_ui=list_ui,type=type,link=addedLinks[type][label],
-                                             name=label,dbutt=downloadButt,bar=progBar,rbutt=rmButt :
+                downloadButt.clicked.connect(lambda x, list_ui=list_ui,type=type,link=link,
+                                             name=name,dbutt=downloadButt,bar=progBar,rbutt=rmButt :
                                              self.downloadVersion(list_ui,type,link,name,dbutt,bar,rbutt))
 
             versionLabel.setText(str(label))
@@ -202,7 +205,7 @@ class blenderLauncherWidget():
             rmButt.setIcon(QtGui.QIcon(QtGui.QPixmap(os.path.join(projDir, "icons", "minus.svg"))))
             delButt.setIcon(QtGui.QIcon(QtGui.QPixmap(os.path.join(projDir, "icons", "delete.svg"))))
 
-            rmButt.clicked.connect(lambda x, list_ui=list_ui, name=label: self.rmItemFromList(list_ui,name,type))
+            rmButt.clicked.connect(lambda x, list_ui=list_ui, label=label: self.rmItemFromList(list_ui,label,type))
 
             itemWidget = QtWidgets.QWidget()
             hl = QtWidgets.QHBoxLayout()
@@ -318,9 +321,11 @@ class getlinkThread(QThread):
             for link in soup.findAll('a', attrs={'href': re.compile("(?=.*linux)(?=.*64)(?=.*.tar)")}):
                 downloadLabel = str(link.get('href'))
                 downloadLabel = str(downloadLabel.replace(self.build_str, ""))
+                name = downloadLabel.split('-')[1:2][0]
                 downloadLink = self.build_str + downloadLabel
                 if downloadLabel.endswith(".tar.xz") or downloadLabel.endswith(".tar.bz2"):
-                    versionLinks[self.type][downloadLabel] = downloadLink
+                    versionLinks[self.type][name] = {}
+                    versionLinks[self.type][name][downloadLabel] = downloadLink
             self.finished.emit()
             return
         except:
