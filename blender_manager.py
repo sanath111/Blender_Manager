@@ -67,6 +67,10 @@ class blenderLauncherWidget():
         self.main_ui.setStyleSheet(sS.read())
         sS.close()
 
+        self.main_ui.comboBox_LTS.setToolTip("Add a version")
+        self.main_ui.comboBox_Stable.setToolTip("Add a version")
+        self.main_ui.comboBox_Daily.setToolTip("Add a version")
+
         self.initLoad()
 
         self.main_ui.comboBox_LTS.currentIndexChanged.connect(lambda x, combo_ui=self.main_ui.comboBox_LTS,
@@ -181,6 +185,9 @@ class blenderLauncherWidget():
             delButt.setMaximumWidth(30)
             rmButt.setMaximumWidth(30)
 
+            delButt.setToolTip("Delete version from disk")
+            rmButt.setToolTip("Remove version from list")
+
             if os.path.exists(labelDir):
                 downloadButt.setText("Launch")
                 downloadButt.clicked.connect(lambda x, path=labelDir: self.launchVersion(path))
@@ -225,7 +232,6 @@ class blenderLauncherWidget():
         dT.finished.connect(lambda list_ui=list_ui, type=type : self.initList(list_ui,type))
         dT.progress.connect(lambda x, bar=bar : self.updatePrgress(x,bar))
         dT.start()
-
 
     def launchVersion(self,path):
         lT = launchThread(path, app)
