@@ -37,7 +37,7 @@ projDir = os.sep.join(os.path.abspath(__file__).split(os.sep)[:-1])
 sys.path.append(projDir)
 
 homeDir = os.path.expanduser("~")
-assDir = homeDir + "/Documents/blender_launcher/"
+assDir = homeDir + "/Documents/blender_manager/"
 if os.path.exists(assDir):
     pass
 else:
@@ -46,13 +46,14 @@ else:
 main_ui_file = os.path.join(projDir, "blender_manager.ui")
 debug.info(main_ui_file)
 
-confFile = homeDir+os.sep+".config"+os.sep+"blender_launcher.json"
+confFile = homeDir+os.sep+".config"+os.sep+"blender_manager.json"
 
 addedLinks = {'lts':{},'stable':{},'daily':{}}
 versionLinks = {'lts':{},'stable':{},'daily':{}}
 
-ltsVers = ["Blender2.93","Blender2.83"]
-stableVers = ["Blender2.79","Blender2.80","Blender2.81","Blender2.82","Blender2.90","Blender2.91","Blender2.92"]
+ltsVers = ["Blender2.83","Blender2.93"]
+stableVers = ["Blender2.79","Blender2.80","Blender2.81","Blender2.82","Blender2.90","Blender2.91","Blender2.92","Blender3.0"]
+
 
 
 class blenderLauncherWidget():
@@ -93,6 +94,7 @@ class blenderLauncherWidget():
         qtRectangle.moveCenter(centerPoint)
         self.main_ui.move(qtRectangle.topLeft())
 
+
     def initLoad(self):
         for ver in ltsVers:
             self.loadVersions(self.main_ui.comboBox_LTS,"download.blender.org/release/",ver,"lts")
@@ -115,19 +117,24 @@ class blenderLauncherWidget():
         self.initDailyList()
         self.initStableList()
 
+
     def initLtsList(self):
         self.initList(self.main_ui.listWidget_LTS,"lts")
+
 
     def initStableList(self):
         self.initList(self.main_ui.listWidget_Stable, "stable")
 
+
     def initDailyList(self):
         self.initList(self.main_ui.listWidget_Daily, "daily")
+
 
     def initList(self, list_ui, type):
         list_ui.clear()
         for key in addedLinks[type]:
             self.loadItems(list_ui,str(key),type)
+
 
     def loadVersions(self, ui, site, ver, type):
         ui.clear()
@@ -139,12 +146,14 @@ class blenderLauncherWidget():
         lT.finished.connect(lambda ui=ui, type=type: self.loadLinks(ui, type))
         lT.start()
 
+
     def loadLinks(self,ui,type):
         labels = [""]+[str(key) for key in versionLinks[type]]
         labels.sort()
         # debug.info(labels)
         ui.clear()
         ui.addItems(labels)
+
 
     def addItemToList(self, combo_ui, list_ui, type):
         currText = str(combo_ui.currentText()).strip()
@@ -160,12 +169,14 @@ class blenderLauncherWidget():
                 self.loadItems(list_ui,currText,type)
             combo_ui.setCurrentIndex(0)
 
+
     def rmItemFromList(self, list_ui, label, type):
         # addedLinks[type].pop(label)
         del addedLinks[type][label]
         with open(confFile, 'w') as conf_file:
             json.dump(addedLinks, conf_file, sort_keys=True, indent=4)
         self.initList(list_ui,type)
+
 
     def loadItems(self, list_ui, label, type):
         if label:
@@ -223,8 +234,10 @@ class blenderLauncherWidget():
             list_ui.addItem(item)
             list_ui.setItemWidget(item, itemWidget)
 
+
     def updatePrgress(self, prctg, bar):
         bar.setValue(int(prctg))
+
 
     def downloadVersion(self,list_ui,type,link,name,dbutt,bar,rbutt):
         dbutt.hide()
@@ -236,9 +249,11 @@ class blenderLauncherWidget():
         dT.progress.connect(lambda x, bar=bar : self.updatePrgress(x,bar))
         dT.start()
 
+
     def launchVersion(self,path):
         lT = launchThread(path, app)
         lT.start()
+
 
 
 class QListWidgetItemSort(QtWidgets.QListWidgetItem):
@@ -322,6 +337,9 @@ class getlinkThread(QThread):
                 downloadLabel = str(link.get('href'))
                 downloadLabel = str(downloadLabel.replace(self.build_str, ""))
                 name = downloadLabel.split('-')[1:2][0]
+                if self.type == "daily":
+                    name = "_".join(downloadLabel.split('-')[1:3])
+                # debug.info(name)
                 downloadLink = self.build_str + downloadLabel
                 if downloadLabel.endswith(".tar.xz") or downloadLabel.endswith(".tar.bz2"):
                     versionLinks[self.type][name] = {}
