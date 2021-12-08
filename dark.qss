@@ -349,7 +349,7 @@ https://doc.qt.io/qt-5/stylesheet-examples.html#customizing-qmenubar
 
 --------------------------------------------------------------------------- */
 QMenuBar {
-  background-color: #455364;
+  background-color: #37414F;
   padding: 2px;
   border: 1px solid #19232D;
   color: #E0E1E3;
@@ -362,7 +362,7 @@ QMenuBar:focus {
 
 QMenuBar::item {
   background: transparent;
-  padding: 4px;
+  padding: 0px;
 }
 
 QMenuBar::item:selected {

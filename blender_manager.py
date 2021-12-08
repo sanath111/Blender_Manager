@@ -65,6 +65,7 @@ class blenderLauncherWidget():
 
         self.main_ui = uic.loadUi(main_ui_file)
         self.main_ui.setWindowTitle("BLENDER MANAGER")
+        self.main_ui.setWindowIcon(QtGui.QIcon(os.path.join(projDir, "icons", "blender_logo.svg")))
 
         sS = open(os.path.join(projDir, "dark.qss"), "r")
         self.main_ui.setStyleSheet(sS.read())
@@ -213,8 +214,8 @@ class blenderLauncherWidget():
 
             versionLabel.setText(str(label))
 
-            rmButt.setIcon(QtGui.QIcon(QtGui.QPixmap(os.path.join(projDir, "icons", "minus.svg"))))
-            delButt.setIcon(QtGui.QIcon(QtGui.QPixmap(os.path.join(projDir, "icons", "delete.svg"))))
+            rmButt.setIcon(QtGui.QIcon(os.path.join(projDir, "icons", "minus.svg")))
+            delButt.setIcon(QtGui.QIcon(os.path.join(projDir, "icons", "delete.svg")))
 
             rmButt.clicked.connect(lambda x, list_ui=list_ui, label=label: self.rmItemFromList(list_ui,label,type))
 
