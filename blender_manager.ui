@@ -83,17 +83,17 @@
     <property name="title">
      <string>Tools</string>
     </property>
-    <addaction name="actionLocal_path"/>
-    <addaction name="actionClear_Local_Downloads"/>
+    <addaction name="setDownloadPathAction"/>
+    <addaction name="clearLocalDownloadsAction"/>
    </widget>
    <addaction name="menuTools"/>
   </widget>
-  <action name="actionLocal_path">
+  <action name="setDownloadPathAction">
    <property name="text">
     <string>Set Download Path</string>
    </property>
   </action>
-  <action name="actionClear_Local_Downloads">
+  <action name="clearLocalDownloadsAction">
    <property name="text">
     <string>Clear Local Downloads</string>
    </property>

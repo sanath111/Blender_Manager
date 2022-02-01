@@ -87,6 +87,9 @@ class blenderLauncherWidget():
                                                                        list_ui=self.main_ui.listWidget_Daily,
                                                                        type="daily": self.addItemToList(combo_ui,list_ui, type))
 
+        self.main_ui.setDownloadPathAction.triggered.connect(self.setDownloadPath)
+        self.main_ui.clearLocalDownloadsAction.triggered.connect(self.clearLocalDownloads)
+
         self.main_ui.show()
         self.main_ui.update()
 
@@ -171,12 +174,40 @@ class blenderLauncherWidget():
             combo_ui.setCurrentIndex(0)
 
 
-    def rmItemFromList(self, list_ui, label, type):
-        # addedLinks[type].pop(label)
-        del addedLinks[type][label]
-        with open(confFile, 'w') as conf_file:
-            json.dump(addedLinks, conf_file, sort_keys=True, indent=4)
-        self.initList(list_ui,type)
+    def delItemFromList(self, list_ui, label, type):
+        confirm = QtWidgets.QMessageBox()
+        self.setStyle(confirm)
+        confirm.setWindowTitle("Warning!")
+        confirm.setText("<b>Permanently Delete downloaded file?</b>" + "\n")
+        confirm.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.Cancel)
+        selection = confirm.exec_()
+        if (selection == QtWidgets.QMessageBox.Yes):
+            # debug.info(list_ui)
+            # debug.info(label)
+            # debug.info(type)
+            items = os.listdir(assDir)
+            for item in items:
+                if label in item:
+                    # debug.info("Removing: " + assDir+item)
+                    removeCmd = "rm -frv \"{0}\" ".format(assDir+item)
+                    debug.info(shlex.split(removeCmd))
+                    if removeCmd:
+                        p = subprocess.Popen(shlex.split(removeCmd))
+                        p.communicate()
+                    #     self.initLoad()
+
+            del addedLinks[type][label]
+            with open(confFile, 'w') as conf_file:
+                json.dump(addedLinks, conf_file, sort_keys=True, indent=4)
+            self.initList(list_ui, type)
+
+
+    # def rmItemFromList(self, list_ui, label, type):
+    #     # addedLinks[type].pop(label)
+    #     del addedLinks[type][label]
+    #     with open(confFile, 'w') as conf_file:
+    #         json.dump(addedLinks, conf_file, sort_keys=True, indent=4)
+    #     self.initList(list_ui,type)
 
 
     def loadItems(self, list_ui, label, type):
@@ -192,16 +223,16 @@ class blenderLauncherWidget():
             downloadButt = QtWidgets.QPushButton()
             progBar = QtWidgets.QProgressBar()
             versionLabel = QtWidgets.QLabel()
-            rmButt = QtWidgets.QPushButton()
+            # rmButt = QtWidgets.QPushButton()
             delButt = QtWidgets.QPushButton()
 
             downloadButt.setMaximumWidth(200)
             progBar.setMaximumWidth(200)
             delButt.setMaximumWidth(30)
-            rmButt.setMaximumWidth(30)
+            # rmButt.setMaximumWidth(30)
 
             delButt.setToolTip("Delete version from disk")
-            rmButt.setToolTip("Remove version from list")
+            # rmButt.setToolTip("Remove version from list")
 
             if os.path.exists(labelDir):
                 downloadButt.setText("Launch")
@@ -209,15 +240,16 @@ class blenderLauncherWidget():
             else:
                 downloadButt.setText("Download")
                 downloadButt.clicked.connect(lambda x, list_ui=list_ui,type=type,link=link,
-                                             name=name,dbutt=downloadButt,bar=progBar,rbutt=rmButt :
-                                             self.downloadVersion(list_ui,type,link,name,dbutt,bar,rbutt))
+                                             name=name,dbutt=downloadButt,bar=progBar,delButt=delButt :
+                                             self.downloadVersion(list_ui,type,link,name,dbutt,bar,delButt))
 
             versionLabel.setText(str(label))
 
-            rmButt.setIcon(QtGui.QIcon(os.path.join(projDir, "icons", "minus.svg")))
+            # rmButt.setIcon(QtGui.QIcon(os.path.join(projDir, "icons", "minus.svg")))
             delButt.setIcon(QtGui.QIcon(os.path.join(projDir, "icons", "delete.svg")))
 
-            rmButt.clicked.connect(lambda x, list_ui=list_ui, label=label: self.rmItemFromList(list_ui,label,type))
+            delButt.clicked.connect(lambda x, list_ui=list_ui, label=label: self.delItemFromList(list_ui,label,type))
+            # rmButt.clicked.connect(lambda x, list_ui=list_ui, label=label: self.rmItemFromList(list_ui,label,type))
 
             itemWidget = QtWidgets.QWidget()
             hl = QtWidgets.QHBoxLayout()
@@ -226,7 +258,7 @@ class blenderLauncherWidget():
             hl.addWidget(progBar)
             hl.addWidget(versionLabel)
             hl.addWidget(delButt)
-            hl.addWidget(rmButt)
+            # hl.addWidget(rmButt)
 
             progBar.hide()
 
@@ -240,10 +272,10 @@ class blenderLauncherWidget():
         bar.setValue(int(prctg))
 
 
-    def downloadVersion(self,list_ui,type,link,name,dbutt,bar,rbutt):
+    def downloadVersion(self,list_ui,type,link,name,dbutt,bar,delButt):
         dbutt.hide()
         bar.show()
-        rbutt.setEnabled(False)
+        delButt.setEnabled(False)
 
         dT = downloadThread(link, name, app)
         dT.finished.connect(lambda list_ui=list_ui, type=type : self.initList(list_ui,type))
@@ -254,6 +286,40 @@ class blenderLauncherWidget():
     def launchVersion(self,path):
         lT = launchThread(path, app)
         lT.start()
+
+
+    def setDownloadPath(self):
+        debug.info("setting download path")
+
+
+    def clearLocalDownloads(self):
+        debug.info("clearing local downloads")
+
+        confirm = QtWidgets.QMessageBox()
+        self.setStyle(confirm)
+        confirm.setWindowTitle("Warning!")
+        # confirm.setIcon(QtGui.QIcon(QtGui.QPixmap(os.path.join(projDir, "imageFiles", "help-icon-1.png"))))
+        # confirm.setIconPixmap(QtGui.QPixmap(os.path.join(projDir, "imageFiles", "help-icon-1.png")))
+        confirm.setText("<b>Permanently Delete all item(s)?</b>" + "\n")
+        # confirm.setInformativeText(",\n".join(i for i in fileNames))
+        confirm.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.Cancel)
+        selection = confirm.exec_()
+        if (selection == QtWidgets.QMessageBox.Yes):
+            items = os.listdir(assDir)
+            for item in items:
+                removeCmd = "rm -frv \"{0}\" ".format(assDir+item)
+                debug.info(shlex.split(removeCmd))
+                if removeCmd:
+                    p = subprocess.Popen(shlex.split(removeCmd))
+                    p.communicate()
+                    self.initLoad()
+            debug.info("Deleted all downloaded files from "+assDir)
+
+
+    def setStyle(self,ui):
+        sS = open(os.path.join(projDir, "dark.qss"), "r")
+        ui.setStyleSheet(sS.read())
+        sS.close()
 
 
 
@@ -339,7 +405,7 @@ class getlinkThread(QThread):
                 downloadLabel = str(downloadLabel.replace(self.build_str, ""))
                 name = downloadLabel.split('-')[1:2][0]
                 if self.type == "daily":
-                    name = "_".join(downloadLabel.split('-')[1:3])
+                    name = "-".join(downloadLabel.split('-')[1:3])
                 # debug.info(name)
                 downloadLink = self.build_str + downloadLabel
                 if downloadLabel.endswith(".tar.xz") or downloadLabel.endswith(".tar.bz2"):
